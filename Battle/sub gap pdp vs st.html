@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Comparison Counter</title>
+    <script src="https://github.hubspot.com/odometer/odometer.js"></script>
+    <link rel="stylesheet" href="https://github.hubspot.com/odometer/themes/odometer-theme-default.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: black;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+        }
+        .odometer {
+            font-size: 8em;
+            text-align: center;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 900;
+            color: white;
+        }
+        .label {
+            font-size: 2em;
+            margin-bottom: 0.5em;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="label">Channel 1 (PewDiePie)</div>
+        <div id="subscriberCount1" class="odometer">0</div>
+    </div>
+    <div>
+        <div class="label">Channel 2 (Stokes Twins)</div>
+        <div id="subscriberCount2" class="odometer">0</div>
+    </div>
+    <div>
+        <div class="label">Difference</div>
+        <div id="difference" class="odometer">0</div>
+    </div>
+
+    <script>
+        const API_URL_1 = 'https://backend.mixerno.space/api/youtube/estv3/UC-lHJZR3Gqxm24_Vd_AJ5Yw'; // PewDiePie
+        const API_URL_2 = 'https://backend.mixerno.space/api/youtube/estv3/UCbp9MyKCTEww4CxEzc_Tp0Q'; // Stokes Twins
+
+        let lastValidCount1 = 0;
+        let lastValidCount2 = 0;
+
+        async function fetchSubscriberCount(apiUrl, lastValidCount) {
+            try {
+                const response = await fetch(apiUrl, { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.items && data.items[0] && data.items[0].statistics) {
+                    const subscriberCount = parseInt(data.items[0].statistics.subscriberCount, 10);
+                    if (!isNaN(subscriberCount)) {
+                        return subscriberCount;
+                    }
+                }
+                throw new Error('Unexpected data structure');
+            } catch (error) {
+                console.error('API fetch error:', error.message);
+                return lastValidCount;
+            }
+        }
+
+        async function updateCounts() {
+            const subscriberCount1 = await fetchSubscriberCount(API_URL_1, lastValidCount1);
+            const subscriberCount2 = await fetchSubscriberCount(API_URL_2, lastValidCount2);
+
+            lastValidCount1 = subscriberCount1;
+            lastValidCount2 = subscriberCount2;
+
+            document.getElementById('subscriberCount1').innerText = subscriberCount1;
+            document.getElementById('subscriberCount2').innerText = subscriberCount2;
+
+            const difference = Math.abs(subscriberCount1 - subscriberCount2);
+            document.getElementById('difference').innerText = difference;
+        }
+
+        updateCounts();
+        setInterval(updateCounts, 2000);
+    </script>
+</body>
+</html>

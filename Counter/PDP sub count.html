@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Counter MrBeast embed</title>
+    <script src="https://github.hubspot.com/odometer/odometer.js"></script>
+    <link rel="stylesheet" href="https://github.hubspot.com/odometer/themes/odometer-theme-default.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: black;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+        }
+        #subscriberCount {
+            font-size: 20em;
+            text-align: center;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 900;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="subscriberCount" class="odometer">0</div>
+
+    <script>
+        const API_URL = 'https://backend.mixerno.space/api/youtube/estv3/UC-lHJZR3Gqxm24_Vd_AJ5Yw';
+        let lastValidCount = 0; // Stocker la dernière valeur valide
+
+        async function fetchSubscriberCount() {
+            try {
+                // Appel à l'API pour récupérer les données
+                const response = await fetch(API_URL, { cache: 'no-store' }); // Empêche la mise en cache locale
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status}`); // Gérer les erreurs HTTP
+                }
+
+                const data = await response.json();
+
+                // Extraire le nombre d'abonnés depuis `statistics.subscriberCount`
+                if (data.items && data.items[0] && data.items[0].statistics) {
+                    const subscriberCount = parseInt(data.items[0].statistics.subscriberCount, 10);
+                    if (!isNaN(subscriberCount)) {
+                        lastValidCount = subscriberCount; // Mettre à jour la dernière valeur valide
+                        return subscriberCount;
+                    }
+                }
+                throw new Error('Structure de données inattendue'); // Si les données ne sont pas conformes
+            } catch (error) {
+                console.error('Erreur lors de la récupération des données de l\'API:', error.message);
+                return lastValidCount; // Retourner la dernière valeur valide même en cas d'erreur
+            }
+        }
+
+        async function updateSubscriberCount() {
+            const subscriberCount = await fetchSubscriberCount();
+            document.getElementById('subscriberCount').innerText = subscriberCount;
+        }
+
+        // Mettre à jour le compteur une première fois
+        updateSubscriberCount();
+
+        // Continuer à essayer de récupérer les données toutes les 2 secondes
+        setInterval(updateSubscriberCount, 2000);
+    </script>
+</body>
+</html>
