@@ -1,73 +1,138 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
+
 <head>
     <meta charset="UTF-8">
-    <title>Counter MrBeast embed</title>
-    <script src="https://github.hubspot.com/odometer/odometer.js"></script>
-    <link rel="stylesheet" href="https://github.hubspot.com/odometer/themes/odometer-theme-default.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MrBeast Live Counter</title>
+    <link rel="stylesheet" href="https://lcedit.com/odometer/odometer.css">
+    <script src="https://lcedit.com/odometer/odometer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap");
+
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            background-color: #181818;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            display: grid;
+            place-items: center;
+            height: 100vh; /* Hauteur de la fenêtre */
             margin: 0;
-            background-color: black;
-            color: white;
-            font-family: 'Roboto', sans-serif;
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
         }
-        #subscriberCount {
-            font-size: 20em;
-            text-align: center;
+
+        .counter-container {
+            display: grid;
+            justify-items: center;
+            gap: 20px;
+        }
+
+        .odometer {
             font-family: 'Roboto', sans-serif;
+            font-size: 15em;
             font-weight: 900;
-            color: white;
+            color: #ffffff;
+        }
+
+        canvas {
+            width: 100%;  /* S'adapte à la largeur du conteneur */
+            height: 50vh; /* S'adapte à 50% de la hauteur de la fenêtre */
         }
     </style>
 </head>
+
 <body>
-    <div id="subscriberCount" class="odometer">0</div>
+    <div class="counter-container">
+        <div id="counter" class="odometer">0</div>
+        <canvas id="subscriberChart"></canvas> <!-- Graphique Chart.js ici -->
+    </div>
 
     <script>
-        const API_URL = 'https://backend.mixerno.space/api/youtube/estv3/UCq-Fj5jknLsUf-MWSy4_brA';
-        let lastValidCount = 0; // Stocker la dernière valeur valide
+        let previousCount = 0;
+        const odometers = Odometer.init();
+
+        for (let i = 0; i < odometers.length; i++) {
+            odometers[i].options = {
+                animation: ['default', 'byDigit', 'count', 'minimal'][1],
+                duration: 2000,
+                format: ',ddd'
+            };
+        }
+
+        // Préparation du graphique avec fond sous la courbe
+        const ctx = document.getElementById('subscriberChart').getContext('2d');
+        const subscriberChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Abonnés',
+                    data: [],
+                    borderColor: '#ff0000',  // Couleur de la ligne en bleu clair
+                    backgroundColor: 'rgba(107, 0, 0, 0.7)',  // Fond sous la courbe avec le bleu foncé
+                    fill: true,  // Active le remplissage sous la ligne
+                    tension: 0.2,
+                    pointRadius: 0,  // Pas de gros points sur la ligne
+                    borderWidth: 7
+                }]
+            },
+            options: {
+                responsive: true,  // Permet au graphique de s'adapter
+                maintainAspectRatio: true, // Garder le ratio en fonction de la fenêtre
+                animation: {
+                    duration: 0 // Désactive toute animation de Chart.js
+                },
+                scales: {
+                    x: {
+                        display: false
+                    },
+                    y: {
+                        display: false
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
 
         async function fetchSubscriberCount() {
             try {
-                // Appel à l'API pour récupérer les données
-                const response = await fetch(API_URL, { cache: 'no-store' }); // Empêche la mise en cache locale
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status}`); // Gérer les erreurs HTTP
-                }
-
+                const response = await fetch('https://backend.mixerno.space/api/youtube/estv3/UCX6OQ3DkcsbYNE6H8uQQuVA');
                 const data = await response.json();
+                const newCount = data.items[0].statistics.subscriberCount;  // Nouveau champ pour récupérer le nombre d'abonnés
 
-                // Extraire le nombre d'abonnés depuis `statistics.subscriberCount`
-                if (data.items && data.items[0] && data.items[0].statistics) {
-                    const subscriberCount = parseInt(data.items[0].statistics.subscriberCount, 10);
-                    if (!isNaN(subscriberCount)) {
-                        lastValidCount = subscriberCount; // Mettre à jour la dernière valeur valide
-                        return subscriberCount;
-                    }
+                if (newCount !== previousCount) {
+                    document.getElementById('counter').innerText = newCount;
+
+                    const odometerElement = document.getElementById('counter');
+                    odometerElement.classList.add('odometer-updating');
+
+                    setTimeout(() => {
+                        odometerElement.classList.remove('odometer-updating');
+                    }, 500);
+
+                    // Mise à jour du graphique sans animation
+                    const currentTime = new Date().toLocaleTimeString();
+                    subscriberChart.data.labels.push(currentTime);
+                    subscriberChart.data.datasets[0].data.push(newCount);
+                    subscriberChart.update();
                 }
-                throw new Error('Structure de données inattendue'); // Si les données ne sont pas conformes
+
+                previousCount = newCount;
             } catch (error) {
-                console.error('Erreur lors de la récupération des données de l\'API:', error.message);
-                return lastValidCount; // Retourner la dernière valeur valide même en cas d'erreur
+                console.error('Erreur API:', error);
             }
         }
 
-        async function updateSubscriberCount() {
-            const subscriberCount = await fetchSubscriberCount();
-            document.getElementById('subscriberCount').innerText = subscriberCount;
-        }
-
-        // Mettre à jour le compteur une première fois
-        updateSubscriberCount();
-
-        // Continuer à essayer de récupérer les données toutes les 2 secondes
-        setInterval(updateSubscriberCount, 2000);
+        fetchSubscriberCount();
+        setInterval(fetchSubscriberCount, 1930);
     </script>
 </body>
+
 </html>
